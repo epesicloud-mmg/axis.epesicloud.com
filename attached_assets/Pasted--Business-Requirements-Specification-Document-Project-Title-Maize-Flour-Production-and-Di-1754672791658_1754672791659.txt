@@ -1,0 +1,283 @@
+### Business Requirements Specification Document
+
+**Project Title**: Maize Flour Production and Distribution Process Management System
+
+**Document Purpose**: This document outlines the business requirements, roles and responsibilities, workflow, and data entities for the Maize Flour Production and Distribution Management System. This specification will be used to guide the development, implementation, and operational management of the system.
+
+---
+
+## Table of Contents
+
+1. Introduction
+    - Project Overview
+    - Objectives
+    - Scope
+    - Assumptions and Constraints
+2. Roles and Responsibilities
+    - Quality Control Team
+    - Procurement Team
+    - Accounts Team
+    - Production Team
+    - Warehouse Team
+    - Dispatch Team
+    - OD Approval Team
+3. Detailed Processes and Workflows
+    - Maize Delivery and Quality Check
+    - Procurement Process
+    - Production Process
+    - Quality Control Process
+    - Warehouse Management
+    - Dispatch Process
+    - Approval Process
+4. Data Entities and Modules
+    - Data Entities Description
+    - Modules Overview
+5. Roles and Permissions
+6. Workflow Overview
+    - Workflow with Bill of Materials (BOM)
+    - Detailed Steps and Data Entities
+7. Appendices
+    - Glossary of Terms
+    - Reference Documents
+
+---
+
+## 1. Introduction
+
+### Project Overview
+
+The Maize Flour Production and Distribution Management System is designed to streamline and optimize the processes involved in maize procurement, production, quality control, warehousing, dispatch, and approval. The system will enable efficient management of resources, improve quality control, and ensure timely delivery of products to customers.
+
+### Objectives
+
+- Enhance the quality control of raw materials and finished products.
+- Streamline the procurement process and manage financial transactions.
+- Optimize production processes and ensure efficient use of materials.
+- Manage warehousing and inventory effectively.
+- Ensure timely dispatch and delivery of finished products.
+- Provide comprehensive reporting and approval mechanisms.
+
+### Scope
+
+The system will cover the entire lifecycle from maize delivery to finished product dispatch, including quality control, procurement, production, warehousing, and financial transactions.
+
+### Assumptions and Constraints
+
+- The system will integrate with existing ERP and financial systems.
+- Users will have access to the internet and necessary devices for system operation.
+- Regulatory compliance requirements will be adhered to.
+
+---
+
+## 2. Roles and Responsibilities
+
+### Quality Control Team
+
+**Role**: Oversees the quality of the maize received and the flour produced.
+
+- **Modules**: Quality Control, Warehouse, Production Quality Control, Packaging Quality Control, Labour Quality Control, Raw Material Quality Control, Repackaging Quality Control, Stock Item Quality Control, Customer Detail Quality Control
+
+### Procurement Team
+
+**Role**: Manages procurement and oversees accounts.
+
+- **Modules**: Requisition, Procurement, Operations Director, Accounts, Customer Detail
+
+### Accounts Team
+
+**Role**: Handles financial transactions.
+
+- **Modules**: Accounts, Billing, Accounts (W.B Billing), Weightbridge, Accounts (Cost), General Ledger, Bank, Dispatch, Accounts WBBilling, AccountsCost, General Ledger
+
+### Production Team
+
+**Role**: Handles production processes.
+
+- **Modules**: Production, Production Orders, Production Runs, ProductionOrderMaterials, ProductionRunMaterials, ProductionQualityChecks
+
+### Warehouse Team
+
+**Role**: Manages storage of maize and flour.
+
+- **Modules**: Warehouse, Warehouse Quality Control, Warehouse Stock, WarehouseB
+
+### Dispatch Team
+
+**Role**: Manages dispatch of finished products.
+
+- **Modules**: Dispatch
+
+### OD Approval Team
+
+**Role**: Oversees overall operations and ensures approvals.
+
+- **Modules**: Operations Director, Approval Team Members, Accounts, Weightbridge, Third Party, Dispatch Weight Team
+
+---
+
+## 3. Detailed Processes and Workflows
+
+### Maize Delivery and Quality Check
+
+**Steps**:
+
+1. **Maize Arrives in a Truck**:
+    - **Details**: When the maize arrives, the delivery truck’s registration number, the supplier’s name, and the expected quantity of maize should be recorded. This step ensures that all incoming deliveries are properly documented and attributed to the correct supplier.
+2. **Key In Supplier Information**:
+    - For existing Suppliers, their details are auto-fetched. For new supplier details such as contact information, company name, and identification numbers are entered into the system. This information is crucial for tracking the source of the maize and managing future communications or issues.
+3. **Quality Check of Raw Maize**:
+    - The quality control team performs an initial inspection of the maize. This involves a visual inspection to check for contaminants or defects, measuring moisture levels to ensure they are within acceptable limits, and sampling the maize for laboratory analysis. Only maize meeting the required standards is accepted.
+4. **Weighbridge Charges Paid**:
+    - Weighbridge charges are calculated based on the size and weight of the truck. These charges are essential for covering the cost of using the weighbridge services. Payment can be made through various methods such as Mpesa, bank transfer, or offset against the maize purchase.
+5. **Truck Goes to Weighing Scale**:
+    - The truck is weighed on the weighbridge to obtain three key measurements: gross weight (total weight including the truck and maize), tare weight (weight of the truck empty), and net weight (weight of the maize only). These measurements are crucial for calculating the exact quantity of maize delivered and for billing purposes.
+6. **Weighbridge Ticket Details Provided to Customer**:
+    - A weighbridge ticket is generated, detailing the gross, tare, and net weights. This ticket serves as a receipt for the transaction and is provided to the customer for verification. Including a batch number on the ticket, if possible, enhances traceability and helps in tracking the maize throughout the processing chain.
+7. **Batch Number Allocation After Quality Check**:
+    - Once the maize passes the quality check, it is assigned a unique batch number. This batch number helps in tracking the maize through various stages of processing and storage, ensuring that any issues can be traced back to the specific batch. It also facilitates inventory management and quality control.
+8. **Receiving Bay as Warehouse**:
+    - The receiving bay is used as a temporary storage area for the maize immediately after delivery. It functions as a preliminary warehouse where the maize is kept before being moved to a more permanent storage location. Proper management of the receiving bay helps in organizing the maize and preparing it for further processing or storage.
+9. **Maize Transferred to Pit**:
+    - The maize is moved from the receiving bay to a processing pit or warehouse. The processing pit is a designated area for the initial handling and storage of maize before it undergoes further processing.
+10. **Maize Goes to Store or Pit**:
+    - Depending on the storage requirements, the maize is placed in either a storage facility or a processing pit. The storage facility is used for longer-term storage of maize, while the processing pit is used for maize that is ready to undergo processing.
+11. **Maize Goes to Pit for Processing**:
+    - Approved maize is moved to the processing pit where it will undergo further steps such as cleaning, drying, or milling. The processing pit is designed to handle maize through various stages of preparation.
+
+**Data Entities**:
+
+- **TruckDelivery**: This entity captures details about the delivery truck, including its registration, the supplier’s details, and the date and time of arrival.
+- **TruckDeliveryQualityCheck**: This entity records information about the quality check performed on the delivered maize, including inspection results and any issues identified.
+- **QualityCheckStatusTypes**: Defines different statuses for the quality check process, such as “Passed,” “Failed,” or “Pending,” providing a framework for tracking the maize’s quality status.
+- **WeighbridgeReading**: Contains data from the weighbridge, including gross weight, tare weight, and net weight, which are used for calculating the quantity of maize and managing weighbridge charges.
+- **RawMaterialBatches**: Tracks information about batches of raw maize, including batch numbers, quality status, and storage location, enabling effective tracking and management of maize through the supply chain.
+
+### Procurement Process
+
+**Steps**:
+
+1. **Requisition Creation**: Departmental Leads initiate procurement requisition.
+2. **Procurement Execution**: Procurement team manages vendor selection and purchase orders.
+3. **Accounts Management**: Accounts team handles financial transactions related to procurement.
+
+**Data Entities**:
+
+- Requisition
+- Procurement
+- Accounts
+
+### Production Process
+
+**Steps**:
+
+1. **Production Order Creation**:
+    - Production orders are generated to specify the requirements for production, including quantities, types of products, and any special instructions. This initial step sets the foundation for the entire production process.
+2. **Production Order Specification**:
+    - Define the production stages for maize, including milling and processing to create semi-finished products and finished goods. These products include flour, jam, brawn, and screenings. This specification helps in tracking the different stages and types of products being produced.
+3. **Capability for Pre-Planned and On-Demand Production Orders**:
+    - Implement the capability to handle both pre-planned production orders and on-demand requests. Pre-planned orders are scheduled in advance based on forecasts, while on-demand orders are processed as needed.
+4. **Partial Packaging and Resume Capability**:
+    - Allow for partial packaging in case of production outages or interruptions. The system should be able to resume production from the last completed order to minimize disruptions.
+5. **Production Run Execution**:
+    - The production team executes the production runs according to the order specifications. Production runs can span multiple days, requiring effective scheduling and coordination.
+6. **Standard Parameters for Quality Checks**:
+    - During production runs, standard quality check parameters are applied. These parameters are averaged at the production order level to ensure consistent quality across batches.
+7. **Monitoring of Moisture and Other Parameters**:
+    - Monitor changes in moisture levels and other production parameters throughout the run. Variations may impact the final product’s quality and consistency.
+8. **Quality Check After Production**:
+    - Conduct quality checks on the finished products to ensure they meet the required standards. Post-production quality checks are essential for maintaining product quality and safety.
+9. **Production Run Batch Numbers Assigned**:
+    - Assign unique batch numbers to the finished products for traceability and inventory management. Batch numbers help in tracking and recalling products if necessary.
+10. **Partial Packaging**:
+    - Allow for partial packaging of products as needed. This can be useful in cases where full packaging cannot be completed due to production constraints or other issues.
+11. **Management of Batches for Different Outputs**:
+    - Organize and manage the different batches based on the types of products produced. This includes tracking batches for flour, jam, brawn, and screenings.
+    - Ensure proper documentation and tracking for each batch type.
+12. **Packaging Requirements**:
+    - Manage packaging requirements, including different package sizes such as 2kg and 4kg. Ensure that packaging meets the specifications outlined in the production order.
+13. **Production Orders for Packaging**:
+    - Create production orders for packaging tasks, such as packaging 40kg of maize. These orders should be treated as Production Order Level 2 and may require additional quality checks, particularly for hygiene.
+14. **Production Order Closure Process**:
+    - Complete the production order closure process, which involves finalizing all activities, documenting results, and closing the order in the system.
+    - Follow a structured closure process to ensure all aspects of the production order are completed and recorded.
+15. **Record Damages at Closure**:
+    - Record any damages or losses incurred during the production process as part of the official closure. This helps in assessing production efficiency and addressing any issues.
+16. **Control System for Damages**:
+    - Implement a control system to manage and track damages. This system is crucial for maintaining production efficiency and addressing any losses or issues effectively.
+
+**Data Entities**:
+
+- **ProductionOrders**: Contains information about production orders, including specifications, quantities, and scheduling details.
+- **ProductionOrderMaterials**: Records materials required for each production order, including quantities and sources.
+- **ProductionRuns**: Tracks details of production runs, including start and end times, and progress.
+- **ProductionRunMaterials**: Documents materials used during each production run.
+- **ProductionQualityChecks**: Records the results of quality checks conducted during and after production.
+- **FinishedProductBatches**: Manages information about batches of finished products, including batch numbers and quality status.
+- **ProductClosure**: Handles the closure of production orders, including documentation of damages and finalization of order details.
+
+### Quality Control Process
+
+**Steps**:
+
+1. **Initial Quality Check**:
+    - This step involves inspecting the raw materials (e.g., maize) upon their arrival. The quality control team assesses the materials for factors such as moisture content, presence of foreign materials, grain integrity, and overall quality.
+2. **Production Quality Check**:
+    - Quality checks conducted during the production process ensure that the production parameters and standards are maintained. This includes checking the consistency, texture, moisture levels, and other relevant factors of the product at various stages of production. Post-production checks verify the final product's compliance with quality standards before it is packaged.
+3. **Packaging Quality Control**:
+    - This step ensures that the packaging materials and processes meet the required quality standards. Checks include verifying the integrity of the packaging, correct labeling, proper sealing, and ensuring that the packaged products are free from contamination and damage.
+4. **Labour Quality Control**:
+    - Ensures that the workforce involved in production, packaging, and other processes adhere to the established quality standards.
+    - Documentations shared.
+5. **Repackaging Quality Control**:
+    - When products are repackaged, this step ensures that the repackaged items meet the same quality standards as the original packaging. This involves checking the condition of the product, the integrity of the new packaging, and ensuring correct labeling and sealing.
+
+**Data Entities**:
+
+- **QualityControl**: General entity encompassing all quality control activities and records.
+- **ProductionQualityChecks**: Records specific to quality checks conducted during production runs.
+- **PackagingQualityControl**: Manages data related to the quality control of packaging processes and materials.
+- **LabourQualityControl**: Tracks quality standards and compliance related to labor resources.
+- **RawMaterialQualityControl**: Documents initial quality checks and assessments of raw materials upon arrival.
+- **RepackagingQualityControl**: Contains records of quality checks conducted during repackaging activities.
+- **StockItemQualityControl**: Maintains quality control records for stock items to ensure ongoing compliance with standards.
+
+### Warehouse Management
+
+**Steps**:
+
+1. **Storage Management**: Manages storage of raw materials and finished products.
+2. **Inventory Management**: Tracks inventory levels and movements.
+3. **Warehouse Transfers**: Manages transfers between different warehouse locations.
+
+**Data Entities**:
+
+- Warehouse
+- WarehouseQualityControl
+- WarehouseStock
+- WarehouseB
+- WarehouseTransfers
+- WarehouseTransferDamage
+
+### Dispatch Process
+
+**Steps**:
+
+1. **Dispatch Planning**: Plans dispatch of finished products.
+2. **Weighbridge Check**: Manages weighing of dispatch trucks.
+3. **Delivery Execution**: Ensures timely delivery to customers.
+4. **Delivery Confirmation**: Confirms delivery and updates records.
+5. Use Delivery Notes & Packing Notes to check on the items. 
+6. Log details of person who verified and approved by as details.
+
+**Data Entities**:
+
+- Dispatch
+- DeliveryNotes
+- PackingLists
+- Deliveries
+
+---
+
+**Review Date**: 02/08/2024
+
+**Document Version**:  2.0
