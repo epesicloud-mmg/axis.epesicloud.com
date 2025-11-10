@@ -1,8 +1,10 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./auth";
 import { seedDemoData } from "./seed-data";
+import passport from "passport";
+import bcrypt from "bcryptjs";
 import {
   insertSupplierSchema,
   insertTruckDeliverySchema,
@@ -12,6 +14,8 @@ import {
   insertProductionOrderSchema,
   insertFinishedProductBatchSchema,
   insertDispatchOrderSchema,
+  loginSchema,
+  registerSchema,
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -19,11 +23,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   // Auth routes
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const userData = registerSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(userData.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists" });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      
+      // Create user
+      const user = await storage.createUser({
+        ...userData,
+        password: hashedPassword,
+      });
+
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error registering user:", error);
+      res.status(400).json({ message: "Failed to register user" });
+    }
+  });
+
+  app.post("/api/auth/login", (req, res, next) => {
+    passport.authenticate("local", (err: any, user: any, info: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Internal server error" });
+      }
+      if (!user) {
+        return res.status(401).json({ message: info?.message || "Invalid credentials" });
+      }
+      req.logIn(user, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Login failed" });
+        }
+        return res.json(user);
+      });
+    })(req, res, next);
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.logout((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Logout failed" });
+      }
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
+      res.json(req.user);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -158,7 +214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const checkData = {
         ...insertQualityCheckSchema.parse(req.body),
-        checkedBy: req.user.claims.sub,
+        checkedBy: req.user.id,
       };
       const check = await storage.createQualityCheck(checkData);
       res.json(check);
@@ -183,7 +239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const orderData = {
         ...insertProductionOrderSchema.parse(req.body),
-        createdBy: req.user.claims.sub,
+        createdBy: req.user.id,
       };
       const order = await storage.createProductionOrder(orderData);
       res.json(order);
@@ -265,7 +321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const orderData = {
         ...insertDispatchOrderSchema.parse(req.body),
-        createdBy: req.user.claims.sub,
+        createdBy: req.user.id,
       };
       const order = await storage.createDispatchOrder(orderData);
       res.json(order);
@@ -304,7 +360,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reading = await storage.createWeighbridgeReading(readingData);
       
       // Update delivery status to approved after weighbridge
-      await storage.updateDeliveryStatus(readingData.deliveryId, "approved");
+      if (readingData.deliveryId && typeof readingData.deliveryId === 'string') {
+        await storage.updateDeliveryStatus(readingData.deliveryId, "approved");
+      }
       
       res.json(reading);
     } catch (error) {
