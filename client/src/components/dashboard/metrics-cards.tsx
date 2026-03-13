@@ -17,110 +17,76 @@ export default function MetricsCards() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[...Array(4)].map((_, i) => (
-          <Card key={i}>
-            <CardContent className="p-6">
-              <div className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-                <div className="h-8 bg-gray-200 rounded w-3/4 mb-1"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/3"></div>
-              </div>
-            </CardContent>
+          <Card key={i} className="bg-slate-900/40 border-slate-800 rounded-3xl h-32 animate-pulse">
           </Card>
         ))}
       </div>
     );
   }
 
-  const formatNumber = (num: number) => {
-    if (num >= 1000) {
-      return `${(num / 1000).toFixed(1)}k`;
+  const cards = [
+    {
+      label: "Daily Production",
+      value: `${(metrics?.dailyProduction || 0).toLocaleString()} kg`,
+      change: "+12.5%",
+      icon: TrendingUp,
+      color: "text-emerald-400",
+      bg: "bg-emerald-500/10",
+      border: "border-emerald-500/20"
+    },
+    {
+      label: "Quality Score",
+      value: `${(metrics?.qualityScore || 0).toFixed(1)}%`,
+      change: "Above Target",
+      icon: Award,
+      color: "text-indigo-400",
+      bg: "bg-indigo-500/10",
+      border: "border-indigo-500/20"
+    },
+    {
+      label: "Pending Orders",
+      value: metrics?.pendingOrders || 0,
+      change: "3 Critical",
+      icon: Clock,
+      color: "text-amber-400",
+      bg: "bg-amber-500/10",
+      border: "border-amber-500/20"
+    },
+    {
+      label: "Inventory Level",
+      value: `${(metrics?.inventoryLevel || 0).toFixed(0)}%`,
+      change: "Optimal",
+      icon: Package,
+      color: "text-blue-400",
+      bg: "bg-blue-500/10",
+      border: "border-blue-500/20"
     }
-    return num.toString();
-  };
+  ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Daily Production</p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {formatNumber(metrics?.dailyProduction || 0)} kg
-              </p>
-              <p className="text-sm text-green-600 flex items-center mt-1">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                <span>12% vs yesterday</span>
-              </p>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {cards.map((card, i) => (
+        <Card key={i} className="bg-slate-900/40 border-slate-800/60 backdrop-blur-xl rounded-3xl border-l-4 transition-all hover:scale-[1.02] hover:bg-slate-900/60" style={{ borderLeftColor: `rgb(var(--${card.color.split('-')[1]}-500))` }}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{card.label}</p>
+                <p className="text-3xl font-black text-white leading-none tracking-tight">{card.value}</p>
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${card.bg} ${card.color}`}>
+                    {card.change}
+                  </span>
+                </div>
+              </div>
+              <div className={`w-14 h-14 ${card.bg} rounded-2xl flex items-center justify-center border ${card.border} shadow-lg shadow-black/20`}>
+                <card.icon className={`h-7 w-7 ${card.color}`} />
+              </div>
             </div>
-            <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-              <TrendingUp className="h-6 w-6 text-primary-500" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Quality Score</p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {(metrics?.qualityScore || 0).toFixed(1)}%
-              </p>
-              <p className="text-sm text-green-600 flex items-center mt-1">
-                <Award className="h-3 w-3 mr-1" />
-                <span>Above target</span>
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <Award className="h-6 w-6 text-green-500" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Pending Orders</p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {metrics?.pendingOrders || 0}
-              </p>
-              <p className="text-sm text-orange-600 flex items-center mt-1">
-                <Clock className="h-3 w-3 mr-1" />
-                <span>3 urgent</span>
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-              <Clock className="h-6 w-6 text-orange-500" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Inventory Level</p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {(metrics?.inventoryLevel || 0).toFixed(0)}%
-              </p>
-              <p className="text-sm text-green-600 flex items-center mt-1">
-                <Package className="h-3 w-3 mr-1" />
-                <span>Optimal</span>
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <Package className="h-6 w-6 text-indigo-500" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }

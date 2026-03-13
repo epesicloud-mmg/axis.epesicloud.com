@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, ClipboardCheck, AlertTriangle, CheckCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { QualityCheck, RawMaterialBatch } from "@shared/schema";
 
 export default function QualityControl() {
@@ -46,201 +47,170 @@ export default function QualityControl() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "passed":
-        return "bg-green-100 text-green-800";
-      case "failed":
-        return "bg-red-100 text-red-800";
+      case "approved":
+      case "released":
+        return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
+      case "rejected":
+      case "blocked":
+        return "bg-rose-500/10 text-rose-500 border-rose-500/20";
+      case "on_hold":
+        return "bg-amber-500/10 text-amber-500 border-amber-500/20";
       case "in_review":
-        return "bg-blue-100 text-blue-800";
+        return "bg-indigo-500/10 text-indigo-500 border-indigo-500/20";
       case "pending":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-slate-500/10 text-slate-500 border-slate-500/20";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-slate-500/10 text-slate-500 border-slate-500/20";
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "passed":
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
-      case "failed":
-        return <AlertTriangle className="w-4 h-4 text-red-600" />;
+      case "approved":
+      case "released":
+        return <CheckCircle className="w-5 h-5 text-emerald-500" />;
+      case "rejected":
+      case "blocked":
+        return <AlertTriangle className="w-5 h-5 text-rose-500" />;
+      case "on_hold":
+        return <AlertTriangle className="w-5 h-5 text-amber-500" />;
+      case "in_review":
+        return <ClipboardCheck className="w-5 h-5 text-indigo-500" />;
       default:
-        return <ClipboardCheck className="w-4 h-4 text-gray-600" />;
+        return <ClipboardCheck className="w-5 h-5 text-slate-400" />;
     }
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
+          <p className="text-slate-500 font-medium">Loading Quality Controls...</p>
         </div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  if (!isAuthenticated) return null;
 
   return (
-    <div className="bg-gray-50 font-sans">
-      <TopNavigation />
-      
-      <div className="flex h-screen pt-16">
-        <Sidebar />
-        
-        <main className="flex-1 overflow-y-auto bg-gray-50">
-          <div className="p-6">
-            {/* Page Header */}
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-2xl font-medium text-gray-900 mb-2">Quality Control</h2>
-                <p className="text-gray-600">Manage quality checks and maintain product standards</p>
+    <div className="min-h-screen bg-slate-50/50">
+      <div className="p-8">
+        {/* Page Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Quality Control Lab</h1>
+            <p className="text-slate-500 mt-1">Maintain product excellence through rigorous testing and compliance checks.</p>
+          </div>
+          <Dialog open={showForm} onOpenChange={setShowForm}>
+            <DialogTrigger asChild>
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 py-6 h-auto shadow-lg shadow-emerald-500/20 transition-all active:scale-95">
+                <Plus className="w-5 h-5 mr-2" />
+                New Inspection
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl rounded-3xl border-slate-200 shadow-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold">Conduct Quality Inspection</DialogTitle>
+              </DialogHeader>
+              <QualityCheckForm
+                batches={rawBatches}
+                onSuccess={() => {
+                  setShowForm(false);
+                  queryClient.invalidateQueries({ queryKey: ["/api/quality-checks"] });
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Quality Check Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {[
+            { label: "Approved", count: qualityChecks.filter((c: any) => c.status === "approved").length, icon: CheckCircle, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+            { label: "In Review", count: qualityChecks.filter((c: any) => c.status === "in_review").length, icon: ClipboardCheck, color: "text-indigo-500", bg: "bg-indigo-500/10" },
+            { label: "On Hold", count: qualityChecks.filter((c: any) => c.status === "on_hold").length, icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-500/10" },
+            { label: "Rejected", count: qualityChecks.filter((c: any) => c.status === "rejected").length, icon: AlertTriangle, color: "text-rose-500", bg: "bg-rose-500/10" },
+          ].map((stat) => (
+            <Card key={stat.label} className="border-none shadow-sm bg-white rounded-3xl">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
+                    <p className="text-2xl font-black text-slate-900 mt-1">{stat.count}</p>
+                  </div>
+                  <div className={cn("p-3 rounded-2xl", stat.bg)}>
+                    <stat.icon className={cn("w-6 h-6", stat.color)} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Quality Checks List */}
+        {checksLoading ? (
+          <div className="flex justify-center py-20">
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
+          </div>
+        ) : qualityChecks.length === 0 ? (
+          <Card className="border-dashed border-2 border-slate-200 bg-white/50 rounded-3xl overflow-hidden">
+            <CardContent className="p-20 text-center">
+              <div className="h-20 w-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <ClipboardCheck className="w-10 h-10 text-slate-400" />
               </div>
-              <Dialog open={showForm} onOpenChange={setShowForm}>
-                <DialogTrigger asChild>
-                  <Button className="bg-green-600 hover:bg-green-700">
-                    <Plus className="w-4 h-4 mr-2" />
-                    New Quality Check
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Conduct Quality Check</DialogTitle>
-                  </DialogHeader>
-                  <QualityCheckForm
-                    batches={rawBatches}
-                    onSuccess={() => {
-                      setShowForm(false);
-                      queryClient.invalidateQueries({ queryKey: ["/api/quality-checks"] });
-                    }}
-                  />
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            {/* Quality Check Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Total Checks</p>
-                      <p className="text-2xl font-semibold text-gray-900">{qualityChecks.length}</p>
-                    </div>
-                    <ClipboardCheck className="w-8 h-8 text-blue-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Passed</p>
-                      <p className="text-2xl font-semibold text-green-600">
-                        {qualityChecks.filter((check: any) => check.status === "passed").length}
-                      </p>
-                    </div>
-                    <CheckCircle className="w-8 h-8 text-green-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Failed</p>
-                      <p className="text-2xl font-semibold text-red-600">
-                        {qualityChecks.filter((check: any) => check.status === "failed").length}
-                      </p>
-                    </div>
-                    <AlertTriangle className="w-8 h-8 text-red-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Pending</p>
-                      <p className="text-2xl font-semibold text-yellow-600">
-                        {qualityChecks.filter((check: any) => check.status === "pending").length}
-                      </p>
-                    </div>
-                    <ClipboardCheck className="w-8 h-8 text-yellow-600" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Quality Checks List */}
-            {checksLoading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Loading quality checks...</p>
-              </div>
-            ) : qualityChecks.length === 0 ? (
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <ClipboardCheck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No quality checks found</h3>
-                  <p className="text-gray-600 mb-6">Start by conducting your first quality check</p>
-                  <Button onClick={() => setShowForm(true)} className="bg-green-600 hover:bg-green-700">
-                    <Plus className="w-4 h-4 mr-2" />
-                    New Quality Check
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Quality Check History</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {qualityChecks.map((check: any) => (
-                      <div
-                        key={check.id}
-                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                      >
-                        <div className="flex items-center space-x-4">
-                          {getStatusIcon(check.status)}
-                          <div>
-                            <h4 className="font-medium text-gray-900">
-                              {check.checkType.replace('_', ' ').toUpperCase()} Quality Check
-                            </h4>
-                            <p className="text-sm text-gray-600">
-                              Batch: {check.batchId}
-                            </p>
-                            {check.moistureLevel && (
-                              <p className="text-sm text-gray-600">
-                                Moisture Level: {check.moistureLevel}%
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                          <Badge className={getStatusColor(check.status)}>
-                            {check.status.replace('_', ' ').toUpperCase()}
+              <h3 className="text-xl font-bold text-slate-900 mb-2">No inspections recorded</h3>
+              <p className="text-slate-500 mb-8 max-w-sm mx-auto">Start by recording your first quality check for incoming raw materials or production batches.</p>
+              <Button onClick={() => setShowForm(true)} variant="outline" className="rounded-xl px-8 h-12 border-slate-200 text-slate-700 hover:bg-slate-50">
+                Conduct Test
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden">
+            <CardHeader className="bg-slate-50 border-b border-slate-100 px-8 py-6">
+              <CardTitle className="text-lg font-bold text-slate-900">Inspection History</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-slate-100">
+                {qualityChecks.map((check: any) => (
+                  <div key={check.id} className="group flex items-center justify-between p-6 hover:bg-slate-50 transition-colors duration-200">
+                    <div className="flex items-center space-x-6">
+                      <div className="p-3 bg-white rounded-2xl shadow-sm border border-slate-100 group-hover:border-primary-100 transition-colors">
+                        {getStatusIcon(check.status)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-slate-900">
+                            {check.checkNumber || 'QC-TBD'}
+                          </h4>
+                          <Badge variant="outline" className="text-[10px] font-bold uppercase rounded-md bg-slate-100 text-slate-600 border-none">
+                            {check.checkType?.replace('_', ' ') || 'GENERAL'}
                           </Badge>
-                          <span className="text-sm text-gray-500">
-                            {new Date(check.checkedAt).toLocaleDateString()}
-                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 mt-1">
+                          <p className="text-xs text-slate-400 font-medium">Batch: <span className="text-slate-600 font-bold">{check.batchId || check.finishedBatchId || 'N/A'}</span></p>
+                          {check.moistureLevel && (
+                            <p className="text-xs text-slate-400 font-medium">Moisture: <span className="text-slate-600 font-bold">{check.moistureLevel}%</span></p>
+                          )}
                         </div>
                       </div>
-                    ))}
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge variant="outline" className={cn("px-3 py-1 rounded-full font-bold text-[10px] tracking-wider uppercase border", getStatusColor(check.status))}>
+                        {check.status.replace('_', ' ')}
+                      </Badge>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">
+                        {new Date(check.checkedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </main>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

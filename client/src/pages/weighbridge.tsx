@@ -28,6 +28,7 @@ const weighbridgeSchema = z.object({
   grossWeight: z.string().min(1, "Gross weight is required"),
   tareWeight: z.string().min(1, "Tare weight is required"),
   operatorName: z.string().min(1, "Operator name is required"),
+  isFinal: z.boolean().default(false),
   notes: z.string().optional(),
 });
 
@@ -37,7 +38,7 @@ export default function Weighbridge() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
-  const [selectedReading, setSelectedReading] = useState<WeighbridgeReading | null>(null);
+  const [selectedReading, setSelectedReading] = useState<any | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Redirect to home if not authenticated
@@ -63,12 +64,13 @@ export default function Weighbridge() {
       grossWeight: "",
       tareWeight: "",
       operatorName: "",
+      isFinal: false,
       notes: "",
     },
   });
 
   // Fetch weighbridge readings
-  const { data: readings = [], isLoading: readingsLoading } = useQuery<WeighbridgeReading[]>({
+  const { data: readings = [], isLoading: readingsLoading } = useQuery<any[]>({
     queryKey: ['/api/weighbridge-readings'],
   });
 
@@ -89,15 +91,12 @@ export default function Weighbridge() {
         grossWeight: data.grossWeight,
         tareWeight: data.tareWeight,
         netWeight: netWeight.toString(),
-        operatorName: data.operatorName,
+        isFinal: data.isFinal,
         notes: data.notes || null,
         readingTime: new Date(),
       };
 
-      return await apiRequest('/api/weighbridge-readings', {
-        method: 'POST',
-        body: readingData,
-      });
+      return await apiRequest("POST", "/api/weighbridge-readings", readingData);
     },
     onSuccess: () => {
       toast({
@@ -147,10 +146,10 @@ export default function Weighbridge() {
   return (
     <div className="bg-gray-50 font-sans">
       <TopNavigation />
-      
+
       <div className="flex h-screen pt-16">
         <Sidebar />
-        
+
         <main className="flex-1 overflow-y-auto bg-gray-50">
           <div className="p-6">
             {/* Page Header */}
@@ -163,7 +162,7 @@ export default function Weighbridge() {
                   </h2>
                   <p className="text-gray-600">Record and manage truck weighing operations</p>
                 </div>
-                
+
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="bg-blue-600 text-white hover:bg-blue-700 flex items-center space-x-2">
@@ -178,7 +177,7 @@ export default function Weighbridge() {
                         Enter the weighbridge measurements for the selected delivery
                       </DialogDescription>
                     </DialogHeader>
-                    
+
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <FormField
@@ -214,11 +213,11 @@ export default function Weighbridge() {
                               <FormItem>
                                 <FormLabel>Gross Weight (kg)</FormLabel>
                                 <FormControl>
-                                  <Input 
-                                    type="number" 
-                                    step="0.1" 
-                                    placeholder="Enter gross weight" 
-                                    {...field} 
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="Enter gross weight"
+                                    {...field}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -233,11 +232,11 @@ export default function Weighbridge() {
                               <FormItem>
                                 <FormLabel>Tare Weight (kg)</FormLabel>
                                 <FormControl>
-                                  <Input 
-                                    type="number" 
-                                    step="0.1" 
-                                    placeholder="Enter tare weight" 
-                                    {...field} 
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="Enter tare weight"
+                                    {...field}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -272,15 +271,38 @@ export default function Weighbridge() {
 
                         <FormField
                           control={form.control}
+                          name="isFinal"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border border-orange-200 bg-orange-50 p-3">
+                              <FormControl>
+                                <input
+                                  type="checkbox"
+                                  checked={field.value}
+                                  onChange={field.onChange}
+                                  className="h-4 w-4 accent-orange-500"
+                                />
+                              </FormControl>
+                              <div>
+                                <FormLabel className="text-sm font-semibold text-orange-800 cursor-pointer">
+                                  Mark as Final Reading
+                                </FormLabel>
+                                <p className="text-xs text-orange-600 mt-0.5">This will close the delivery, create an RM batch, and update stock balances.</p>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
                           name="notes"
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Notes (Optional)</FormLabel>
                               <FormControl>
-                                <Textarea 
+                                <Textarea
                                   placeholder="Any additional observations or notes"
                                   className="min-h-[80px]"
-                                  {...field} 
+                                  {...field}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -297,8 +319,8 @@ export default function Weighbridge() {
                           >
                             Cancel
                           </Button>
-                          <Button 
-                            type="submit" 
+                          <Button
+                            type="submit"
                             disabled={createReading.isPending}
                             className="flex-1 bg-blue-600 hover:bg-blue-700"
                           >
@@ -441,7 +463,7 @@ export default function Weighbridge() {
                                   <div className="text-sm text-gray-600 space-y-1">
                                     <p>Driver: {delivery.driverName || 'N/A'}</p>
                                     <p>Expected: {delivery.expectedQuantity} kg</p>
-                                    <p>Arrived: {delivery.deliveryDate ? format(new Date(delivery.deliveryDate), "MMM dd, HH:mm") : 'N/A'}</p>
+                                    <p>Arrived: {delivery.arrivedAt ? format(new Date(delivery.arrivedAt), "MMM dd, HH:mm") : 'N/A'}</p>
                                   </div>
                                 </div>
                               </div>
@@ -485,7 +507,7 @@ export default function Weighbridge() {
                 Complete information for this weighing operation
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -497,7 +519,7 @@ export default function Weighbridge() {
                   <p className="text-sm">{selectedReading.delivery?.driverName}</p>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">Gross Weight</Label>
@@ -512,24 +534,24 @@ export default function Weighbridge() {
                   <p className="text-lg font-bold text-green-600">{selectedReading.netWeight} kg</p>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-700">Operator</Label>
                 <p className="text-sm">{selectedReading.operatorName}</p>
               </div>
-              
+
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-700">Reading Time</Label>
                 <p className="text-sm">{format(new Date(selectedReading.readingTime), "MMMM dd, yyyy 'at' HH:mm")}</p>
               </div>
-              
+
               {selectedReading.notes && (
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">Notes</Label>
                   <p className="text-sm bg-gray-50 p-2 rounded">{selectedReading.notes}</p>
                 </div>
               )}
-              
+
               {selectedReading.ticketNumber && (
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">Ticket Number</Label>

@@ -1,411 +1,276 @@
 import { db } from "./db";
-import { 
-  suppliers, 
-  truckDeliveries, 
+import {
+  suppliers,
+  customers,
+  products,
+  storageLocations,
+  truckDeliveries,
   weighbridgeReadings,
   rawMaterialBatches,
   qualityChecks,
   productionOrders,
   finishedProductBatches,
-  warehouseStock,
+  stockBalances,
   dispatchOrders,
-  dispatchItems
+  dispatchItems,
+  users
 } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 export async function seedDemoData() {
   try {
     console.log("🌱 Starting to seed demo data...");
+
+    // 0. Get a user for references
+    const [adminUser] = await db.select().from(users).limit(1);
+    const userId = adminUser?.id;
 
     // 1. Create Suppliers
     const supplierData = [
       {
         id: "supplier-001",
         name: "Green Valley Farms",
+        supplierCode: "SUP-GVF",
         contactPerson: "John Kamau",
-        phoneNumber: "+254712345678",
+        phone: "+254712345678",
         email: "contact@greenvalley.co.ke",
         address: "Nakuru County, Kenya",
-        rating: 4.8,
         isActive: true
       },
       {
-        id: "supplier-002", 
+        id: "supplier-002",
         name: "Highlands Agriculture Co.",
+        supplierCode: "SUP-HAC",
         contactPerson: "Mary Wanjiku",
-        phoneNumber: "+254723456789",
+        phone: "+254723456789",
         email: "info@highlands-ag.com",
         address: "Uasin Gishu County, Kenya",
-        rating: 4.5,
-        isActive: true
-      },
-      {
-        id: "supplier-003",
-        name: "Maize Masters Ltd",
-        contactPerson: "Peter Kipchoge",
-        phoneNumber: "+254734567890", 
-        email: "sales@maizmasters.co.ke",
-        address: "Trans Nzoia County, Kenya",
-        rating: 4.7,
         isActive: true
       }
     ];
 
-    await db.insert(suppliers).values(supplierData);
-    console.log("✅ Created suppliers");
+    for (const s of supplierData) {
+      await db.insert(suppliers).values(s).onConflictDoNothing();
+    }
+    console.log("✅ Seeded suppliers");
 
-    // 2. Create Truck Deliveries
+    // 2. Create Customers
+    const customerData = [
+      {
+        id: "cust-001",
+        name: "Tuskys Supermarket",
+        customerCode: "CUST-TYS",
+        contactPerson: "James Omondi",
+        phone: "+254720123456",
+        email: "logistics@tuskys.co.ke",
+        address: "Westlands, Nairobi"
+      },
+      {
+        id: "cust-002",
+        name: "Naivas Supermarket",
+        customerCode: "CUST-NVS",
+        contactPerson: "Sarah Chebet",
+        phone: "+254731234567",
+        email: "orders@naivas.co.ke",
+        address: "Karen, Nairobi"
+      }
+    ];
+
+    for (const c of customerData) {
+      await db.insert(customers).values(c).onConflictDoNothing();
+    }
+    console.log("✅ Seeded customers");
+
+    // 3. Create Products
+    const productData = [
+      {
+        id: "prod-raw-001",
+        sku: "RM-MAIZE-001",
+        name: "Raw White Maize",
+        productType: "raw_material" as const,
+        unitOfMeasure: "kg"
+      },
+      {
+        id: "prod-fin-001",
+        sku: "FP-MAIZE-2KG",
+        name: "Premium Maize Flour 2kg",
+        productType: "finished_product" as const,
+        packageSize: "2kg",
+        unitOfMeasure: "kg"
+      },
+      {
+        id: "prod-fin-002",
+        sku: "FP-MAIZE-5KG",
+        name: "Premium Maize Flour 5kg",
+        productType: "finished_product" as const,
+        packageSize: "5kg",
+        unitOfMeasure: "kg"
+      }
+    ];
+
+    for (const p of productData) {
+      await db.insert(products).values(p).onConflictDoNothing();
+    }
+    console.log("✅ Seeded products");
+
+    // 4. Create Storage Locations
+    const locationData = [
+      {
+        id: "loc-raw-01",
+        code: "SILO-01",
+        name: "Main Maize Silo 1",
+        zone: "Bunkers",
+        itemType: "raw_material" as const
+      },
+      {
+        id: "loc-fin-01",
+        code: "WH-B1",
+        name: "Finished Goods Warehouse B1",
+        zone: "Dispatch",
+        itemType: "finished_product" as const
+      }
+    ];
+
+    for (const l of locationData) {
+      await db.insert(storageLocations).values(l).onConflictDoNothing();
+    }
+    console.log("✅ Seeded storage locations");
+
+    // 5. Create Truck Deliveries
     const deliveryData = [
       {
         id: "delivery-001",
+        deliveryNumber: "DLV-0001",
         supplierId: "supplier-001",
         truckRegistration: "KCA 123A",
         driverName: "Samuel Mwangi",
         driverPhone: "+254745678901",
-        expectedQuantity: "2500",
-        deliveryDate: new Date("2025-01-07T08:30:00Z"),
-        status: "approved" as const
-      },
-      {
-        id: "delivery-002",
-        supplierId: "supplier-002", 
-        truckRegistration: "KBZ 456B",
-        driverName: "Grace Akinyi",
-        driverPhone: "+254756789012",
-        expectedQuantity: "3200",
-        actualQuantity: "3150",
-        deliveryDate: new Date("2025-01-07T10:15:00Z"),
-        status: "approved" as const
-      },
-      {
-        id: "delivery-003",
-        supplierId: "supplier-003",
-        truckRegistration: "KDX 789C", 
-        driverName: "David Kiprotich",
-        driverPhone: "+254767890123",
-        expectedQuantity: "1800",
-        deliveryDate: new Date("2025-01-08T09:00:00Z"),
-        status: "quality_check" as const
-      },
-      {
-        id: "delivery-004",
-        supplierId: "supplier-001",
-        truckRegistration: "KCA 321D",
-        driverName: "Jane Mutindi",
-        driverPhone: "+254778901234",
-        expectedQuantity: "2800",
-        deliveryDate: new Date("2025-01-08T11:30:00Z"),
-        status: "pending" as const
+        expectedQuantity: "25000",
+        receivedQuantity: "24850",
+        expectedArrivalAt: new Date("2025-01-07T08:30:00Z"),
+        status: "approved" as const,
+        createdBy: userId
       }
     ];
 
-    await db.insert(truckDeliveries).values(deliveryData);
-    console.log("✅ Created truck deliveries");
+    for (const d of deliveryData) {
+      await db.insert(truckDeliveries).values(d).onConflictDoNothing();
+    }
+    console.log("✅ Seeded deliveries");
 
-    // 3. Create Weighbridge Readings
-    const weighbridgeData = [
-      {
-        id: "wb-001",
-        deliveryId: "delivery-001",
-        grossWeight: "27500",
-        tareWeight: "25000",
-        netWeight: "2500",
-        operatorName: "Robert Ochieng",
-        readingTime: new Date("2025-01-07T08:45:00Z")
-      },
-      {
-        id: "wb-002", 
-        deliveryId: "delivery-002",
-        grossWeight: "28150",
-        tareWeight: "25000",
-        netWeight: "3150",
-        operatorName: "Robert Ochieng",
-        readingTime: new Date("2025-01-07T10:30:00Z")
-      },
-      {
-        id: "wb-003",
-        deliveryId: "delivery-003",
-        grossWeight: "26800",
-        tareWeight: "25000",
-        netWeight: "1800",
-        operatorName: "Sarah Chepkemoi",
-        readingTime: new Date("2025-01-08T09:15:00Z")
-      }
-    ];
-
-    await db.insert(weighbridgeReadings).values(weighbridgeData);
-    console.log("✅ Created weighbridge readings");
-
-    // 4. Create Raw Material Batches
+    // 6. Create Raw Material Batches
     const rawBatchData = [
       {
-        id: "batch-raw-001",
-        deliveryId: "delivery-001", 
-        batchNumber: "RM-2025-001",
-        quantity: "2500",
-        moistureLevel: "12.5",
-        qualityStatus: "passed" as const,
-        storageLocation: "Warehouse A - Section 1",
-        receivedAt: new Date("2025-01-07T09:00:00Z")
-      },
-      {
-        id: "batch-raw-002",
-        deliveryId: "delivery-002",
-        batchNumber: "RM-2025-002", 
-        quantity: "3150",
-        moistureLevel: "11.8",
-        qualityStatus: "passed" as const,
-        storageLocation: "Warehouse A - Section 2",
-        receivedAt: new Date("2025-01-07T10:45:00Z")
-      },
-      {
-        id: "batch-raw-003",
-        deliveryId: "delivery-003",
-        batchNumber: "RM-2025-003",
-        quantity: "1800", 
-        moistureLevel: "13.2",
-        qualityStatus: "pending" as const,
-        storageLocation: "Quarantine Area",
-        receivedAt: new Date("2025-01-08T09:30:00Z")
+        id: "rb-001",
+        batchNumber: "RM-BT-001",
+        deliveryId: "delivery-001",
+        productId: "prod-raw-001",
+        quantityReceived: "24850",
+        initialLocationId: "loc-raw-01",
+        status: "approved" as const,
+        intakeBy: userId
       }
     ];
 
-    await db.insert(rawMaterialBatches).values(rawBatchData);
-    console.log("✅ Created raw material batches");
+    for (const rb of rawBatchData) {
+      await db.insert(rawMaterialBatches).values(rb).onConflictDoNothing();
+    }
+    console.log("✅ Seeded raw batches");
 
-    // 5. Create Quality Checks
-    const qualityData = [
+    // 7. Create Quality Checks
+    const qcData = [
       {
         id: "qc-001",
-        batchId: "batch-raw-001",
-        checkType: "incoming_inspection",
-        checkedBy: "Dr. Alice Wambui",
+        checkNumber: "QC-IN-001",
+        checkType: "raw_material",
+        batchId: "rb-001",
         moistureLevel: "12.5",
-        contamination: false,
-        pestResidues: false,
-        aflatoxinLevel: "2.1",
-        status: "passed" as const,
-        notes: "Excellent quality maize, meets all standards",
-        checkedAt: new Date("2025-01-07T09:30:00Z")
-      },
-      {
-        id: "qc-002",
-        batchId: "batch-raw-002",
-        checkType: "incoming_inspection", 
-        checkedBy: "Dr. Alice Wambui",
-        moistureLevel: "11.8",
-        contamination: false,
-        pestResidues: false,
-        aflatoxinLevel: "1.8",
-        status: "passed" as const,
-        notes: "High quality batch, ready for processing",
-        checkedAt: new Date("2025-01-07T11:00:00Z")
-      },
-      {
-        id: "qc-003",
-        batchId: "batch-raw-003",
-        checkType: "incoming_inspection",
-        checkedBy: "James Mutua",
-        moistureLevel: "13.2", 
-        contamination: true,
-        pestResidues: false,
-        aflatoxinLevel: "3.5",
-        status: "in_review" as const,
-        notes: "Slight contamination detected, requires additional testing",
-        checkedAt: new Date("2025-01-08T10:00:00Z")
+        status: "approved" as const,
+        checkedBy: userId
       }
     ];
 
-    await db.insert(qualityChecks).values(qualityData);
-    console.log("✅ Created quality checks");
+    for (const qc of qcData) {
+      await db.insert(qualityChecks).values(qc).onConflictDoNothing();
+    }
+    console.log("✅ Seeded quality checks");
 
-    // 6. Create Production Orders
+    // 8. Create Production Orders
     const productionData = [
       {
-        id: "prod-001",
+        id: "po-001",
         orderNumber: "PO-2025-001",
-        productType: "maize_flour_2kg",
-        targetQuantity: 1000,
-        completedQuantity: 850,
-        rawMaterialUsed: "2100",
-        status: "in_progress" as const,
-        scheduledDate: new Date("2025-01-07T12:00:00Z"),
-        startedAt: new Date("2025-01-07T12:30:00Z"),
-        expectedCompletionDate: new Date("2025-01-07T18:00:00Z")
-      },
-      {
-        id: "prod-002", 
-        orderNumber: "PO-2025-002",
-        productType: "maize_flour_4kg",
-        targetQuantity: 500,
-        completedQuantity: 500,
-        rawMaterialUsed: "2050",
+        productId: "prod-fin-001",
+        targetQuantity: "5000",
+        actualQuantityProduced: "4850",
+        totalQuantityIssued: "10000",
         status: "completed" as const,
-        scheduledDate: new Date("2025-01-06T08:00:00Z"),
-        startedAt: new Date("2025-01-06T08:30:00Z"),
-        completedAt: new Date("2025-01-06T14:30:00Z"),
-        expectedCompletionDate: new Date("2025-01-06T16:00:00Z")
+        scheduledDate: new Date("2025-01-08T08:00:00Z"),
+        startedAt: new Date("2025-01-08T08:30:00Z"),
+        completedAt: new Date("2025-01-08T15:00:00Z"),
+        createdBy: userId
       },
       {
-        id: "prod-003",
-        orderNumber: "PO-2025-003",
-        productType: "maize_flour_1kg",
-        targetQuantity: 800,
-        completedQuantity: 0,
+        id: "po-002",
+        orderNumber: "PO-2025-002",
+        productId: "prod-fin-002",
+        targetQuantity: "2000",
+        actualQuantityProduced: "0",
         status: "scheduled" as const,
         scheduledDate: new Date("2025-01-09T08:00:00Z"),
-        expectedCompletionDate: new Date("2025-01-09T16:00:00Z")
+        createdBy: userId
       }
     ];
 
-    await db.insert(productionOrders).values(productionData);
-    console.log("✅ Created production orders");
+    for (const po of productionData) {
+      await db.insert(productionOrders).values(po).onConflictDoNothing();
+    }
+    console.log("✅ Seeded production orders");
 
-    // 7. Create Finished Product Batches
-    const finishedBatchData = [
+    // 9. Create Stock Balances
+    const stockData = [
       {
-        id: "batch-finished-001",
-        productionOrderId: "prod-002",
-        batchNumber: "FP-2025-001",
-        productType: "maize_flour_4kg", 
-        quantity: 500,
-        packageSize: "4kg",
-        expiryDate: new Date("2025-07-06T00:00:00Z"),
-        qualityGrade: "A",
-        storageLocation: "Warehouse B - Section 1",
-        producedAt: new Date("2025-01-06T14:30:00Z")
+        id: "st-001",
+        productId: "prod-raw-001",
+        batchId: "rb-001",
+        locationId: "loc-raw-01",
+        itemType: "raw_material" as const,
+        availableQuantity: "24850"
       },
       {
-        id: "batch-finished-002",
-        productionOrderId: "prod-001", 
-        batchNumber: "FP-2025-002",
-        productType: "maize_flour_2kg",
-        quantity: 420,
-        packageSize: "2kg", 
-        expiryDate: new Date("2025-07-07T00:00:00Z"),
-        qualityGrade: "A",
-        storageLocation: "Warehouse B - Section 2",
-        producedAt: new Date("2025-01-07T16:00:00Z")
+        id: "st-002",
+        productId: "prod-fin-001",
+        batchId: "FP-BT-001",
+        locationId: "loc-fin-01",
+        itemType: "finished_product" as const,
+        availableQuantity: "1500"
       }
     ];
 
-    await db.insert(finishedProductBatches).values(finishedBatchData);
-    console.log("✅ Created finished product batches");
+    for (const st of stockData) {
+      await db.insert(stockBalances).values(st).onConflictDoNothing();
+    }
+    console.log("✅ Seeded stock balances");
 
-    // 8. Create Warehouse Stock
-    const warehouseData = [
-      {
-        id: "stock-001",
-        itemType: "maize_flour_4kg",
-        currentQuantity: "450",
-        reservedQuantity: "50",
-        location: "Warehouse B - Section 1",
-        minThreshold: "100",
-        maxCapacity: "1000",
-        lastUpdated: new Date("2025-01-07T16:30:00Z")
-      },
-      {
-        id: "stock-002",
-        itemType: "maize_flour_2kg", 
-        currentQuantity: "380",
-        reservedQuantity: "40",
-        location: "Warehouse B - Section 2",
-        minThreshold: "150",
-        maxCapacity: "1500",
-        lastUpdated: new Date("2025-01-07T16:30:00Z")
-      },
-      {
-        id: "stock-003",
-        itemType: "raw_maize",
-        currentQuantity: "3850",
-        reservedQuantity: "2100",
-        location: "Warehouse A",
-        minThreshold: "1000",
-        maxCapacity: "10000",
-        lastUpdated: new Date("2025-01-08T10:00:00Z")
-      }
-    ];
-
-    await db.insert(warehouseStock).values(warehouseData);
-    console.log("✅ Created warehouse stock");
-
-    // 9. Create Dispatch Orders
+    // 10. Create Dispatch Orders
     const dispatchData = [
       {
-        id: "dispatch-001",
+        id: "do-001",
         orderNumber: "DO-2025-001",
+        customerId: "cust-001",
         customerName: "Tuskys Supermarket",
         deliveryAddress: "Westlands, Nairobi",
-        contactPhone: "+254720123456",
-        scheduledDate: new Date("2025-01-08T14:00:00Z"),
-        status: "completed" as const,
-        dispatchedAt: new Date("2025-01-08T14:30:00Z"),
-        driverName: "Michael Otieno",
-        vehicleRegistration: "KBY 789M"
-      },
-      {
-        id: "dispatch-002",
-        orderNumber: "DO-2025-002", 
-        customerName: "Naivas Supermarket",
-        deliveryAddress: "Karen, Nairobi",
-        contactPhone: "+254731234567",
-        scheduledDate: new Date("2025-01-08T16:00:00Z"),
-        status: "in_transit" as const,
-        dispatchedAt: new Date("2025-01-08T16:15:00Z"),
-        driverName: "Susan Chebet",
-        vehicleRegistration: "KCX 456N"
-      },
-      {
-        id: "dispatch-003",
-        orderNumber: "DO-2025-003",
-        customerName: "Carrefour Supermarket",
-        deliveryAddress: "Kilimani, Nairobi", 
-        contactPhone: "+254742345678",
-        scheduledDate: new Date("2025-01-09T10:00:00Z"),
-        status: "scheduled" as const
+        status: "delivered",
+        scheduledDate: new Date("2025-01-10T10:00:00Z"),
+        deliveredAt: new Date("2025-01-10T14:30:00Z"),
+        createdBy: userId
       }
     ];
 
-    await db.insert(dispatchOrders).values(dispatchData);
-    console.log("✅ Created dispatch orders");
-
-    // 10. Create Dispatch Items
-    const dispatchItemsData = [
-      {
-        id: "dispatch-item-001",
-        dispatchOrderId: "dispatch-001",
-        productType: "maize_flour_4kg",
-        quantity: 50,
-        unitPrice: "450.00",
-        totalAmount: "22500.00"
-      },
-      {
-        id: "dispatch-item-002", 
-        dispatchOrderId: "dispatch-002",
-        productType: "maize_flour_2kg",
-        quantity: 40,
-        unitPrice: "230.00",
-        totalAmount: "9200.00"
-      },
-      {
-        id: "dispatch-item-003",
-        dispatchOrderId: "dispatch-003",
-        productType: "maize_flour_4kg",
-        quantity: 75,
-        unitPrice: "450.00", 
-        totalAmount: "33750.00"
-      },
-      {
-        id: "dispatch-item-004",
-        dispatchOrderId: "dispatch-003",
-        productType: "maize_flour_2kg", 
-        quantity: 60,
-        unitPrice: "230.00",
-        totalAmount: "13800.00"
-      }
-    ];
-
-    await db.insert(dispatchItems).values(dispatchItemsData);
-    console.log("✅ Created dispatch items");
+    for (const d of dispatchData) {
+      await db.insert(dispatchOrders).values(d).onConflictDoNothing();
+    }
+    console.log("✅ Seeded dispatch orders");
 
     console.log("🎉 Demo data seeding completed successfully!");
     return true;

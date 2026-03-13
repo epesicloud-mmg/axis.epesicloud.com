@@ -11,7 +11,7 @@ export default function QualityAlerts() {
 
   // Filter for recent failed or problematic quality checks
   const alerts = qualityChecks
-    .filter((check) => check.status === "failed" || check.contamination)
+    .filter((check) => check.status === "rejected" || check.contamination)
     .slice(0, 3);
 
   return (
@@ -36,7 +36,7 @@ export default function QualityAlerts() {
                 className="flex items-start space-x-3 p-3 bg-orange-50 rounded-lg border border-orange-200"
               >
                 <div className="flex-shrink-0">
-                  {alert.status === "failed" ? (
+                  {alert.status === "rejected" ? (
                     <XCircle className="w-4 h-4 text-red-500 mt-0.5" />
                   ) : (
                     <AlertTriangle className="w-4 h-4 text-orange-500 mt-0.5" />

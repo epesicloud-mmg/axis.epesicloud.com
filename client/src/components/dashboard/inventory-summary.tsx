@@ -26,11 +26,11 @@ export default function InventorySummary() {
 
   // Calculate totals
   const totalRawMaize = rawBatches
-    .filter((batch) => batch.qualityStatus === "passed")
-    .reduce((total, batch) => total + parseFloat(batch.quantity || "0"), 0);
+    .filter((batch) => batch.status === "approved")
+    .reduce((total, batch) => total + parseFloat(batch.quantityReceived || "0"), 0);
 
   const totalFinishedProducts = finishedBatches
-    .reduce((total, batch) => total + (batch.quantity || 0), 0);
+    .reduce((total, batch) => total + parseFloat(batch.quantityProduced || "0"), 0);
 
   const inventoryItems = [
     {
@@ -44,16 +44,16 @@ export default function InventorySummary() {
     {
       name: "Flour 2kg",
       location: "Warehouse B",
-      quantity: `${finishedBatches.filter((b) => b.packageSize === "2kg").reduce((t, b) => t + (b.quantity || 0), 0)} units`,
-      status: getStockStatus(finishedBatches.filter((b) => b.packageSize === "2kg").reduce((t, b) => t + (b.quantity || 0), 0), 50),
+      quantity: `${finishedBatches.filter((b) => b.packageSize === "2kg").reduce((t, b) => t + parseFloat(b.quantityProduced || "0"), 0)} units`,
+      status: getStockStatus(finishedBatches.filter((b) => b.packageSize === "2kg").reduce((t, b) => t + parseFloat(b.quantityProduced || "0"), 0), 50),
       icon: Package,
       color: "blue"
     },
     {
       name: "Flour 4kg",
-      location: "Warehouse B", 
-      quantity: `${finishedBatches.filter((b) => b.packageSize === "4kg").reduce((t, b) => t + (b.quantity || 0), 0)} units`,
-      status: getStockStatus(finishedBatches.filter((b) => b.packageSize === "4kg").reduce((t, b) => t + (b.quantity || 0), 0), 30),
+      location: "Warehouse B",
+      quantity: `${finishedBatches.filter((b) => b.packageSize === "4kg").reduce((t, b) => t + parseFloat(b.quantityProduced || "0"), 0)} units`,
+      status: getStockStatus(finishedBatches.filter((b) => b.packageSize === "4kg").reduce((t, b) => t + parseFloat(b.quantityProduced || "0"), 0), 30),
       icon: Package,
       color: "purple"
     }

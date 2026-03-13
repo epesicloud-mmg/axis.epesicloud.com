@@ -7,6 +7,9 @@ import passport from "passport";
 import bcrypt from "bcryptjs";
 import {
   insertSupplierSchema,
+  insertProductSchema,
+  insertStorageLocationSchema,
+  insertCustomerSchema,
   insertTruckDeliverySchema,
   insertWeighbridgeReadingSchema,
   insertRawMaterialBatchSchema,
@@ -22,67 +25,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Governance Helpers
+  const logAudit = async (req: any, action: string, entityType: string, entityId: string, prevValues?: any, newValues?: any) => {
+    try {
+      await storage.createAuditLog({
+        entityType,
+        entityId,
+        actorId: req.user?.id,
+        action,
+        previousValues: prevValues,
+        newValues: newValues,
+      });
+    } catch (e) {
+      console.error("Audit log failed:", e);
+    }
+  };
+
+  const raiseException = async (req: any, type: string, entityType: string, entityId: string, description: string, severity: string = "medium") => {
+    try {
+      await storage.createExceptionLog({
+        exceptionType: type,
+        severity,
+        relatedEntityType: entityType,
+        relatedEntityId: entityId,
+        description,
+        status: "open",
+        raisedBy: req.user?.id,
+      });
+    } catch (e) {
+      console.error("Exception log failed:", e);
+    }
+  };
+
   // Auth routes
   app.post("/api/auth/register", async (req, res) => {
     try {
       const userData = registerSchema.parse(req.body);
-      
-      // Check if user already exists
       const existingUser = await storage.getUserByEmail(userData.email);
       if (existingUser) {
         return res.status(400).json({ message: "User already exists" });
       }
-
-      // Hash password
       const hashedPassword = await bcrypt.hash(userData.password, 10);
-      
-      // Create user
       const user = await storage.createUser({
         ...userData,
         password: hashedPassword,
       });
-
-      // Remove password from response
+      await logAudit(req, 'create', 'user', user.id, null, { email: user.email, role: user.role });
       const { password: _, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
     } catch (error) {
-      console.error("Error registering user:", error);
       res.status(400).json({ message: "Failed to register user" });
     }
   });
 
   app.post("/api/auth/login", (req, res, next) => {
     passport.authenticate("local", (err: any, user: any, info: any) => {
-      if (err) {
-        return res.status(500).json({ message: "Internal server error" });
-      }
-      if (!user) {
-        return res.status(401).json({ message: info?.message || "Invalid credentials" });
-      }
-      req.logIn(user, (err) => {
-        if (err) {
-          return res.status(500).json({ message: "Login failed" });
-        }
+      if (err) return res.status(500).json({ message: "Internal server error" });
+      if (!user) return res.status(401).json({ message: info?.message || "Invalid credentials" });
+      req.logIn(user, async (err) => {
+        if (err) return res.status(500).json({ message: "Login failed" });
+        await logAudit(req, 'login', 'user', user.id);
         return res.json(user);
       });
     })(req, res, next);
   });
 
-  app.post("/api/auth/logout", (req, res) => {
-    req.logout((err) => {
-      if (err) {
-        return res.status(500).json({ message: "Logout failed" });
-      }
+  app.post("/api/auth/logout", async (req, res) => {
+    const userId = (req as any).user?.id;
+    req.logout(async (err) => {
+      if (err) return res.status(500).json({ message: "Logout failed" });
+      if (userId) await logAudit({ user: { id: userId } }, 'logout', 'user', userId);
       res.json({ message: "Logged out successfully" });
     });
   });
 
-  app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
+  app.get("/api/auth/user", isAuthenticated, (req: any, res) => {
+    res.json(req.user);
+  });
+
+  // User Management routes (Admin only)
+  app.get("/api/users", isAuthenticated, async (req: any, res) => {
+    if (req.user.role !== 'Admin') return res.status(403).json({ message: "Forbidden" });
     try {
-      res.json(req.user);
+      const users = await storage.getUsers();
+      res.json(users.map(({ password, ...u }: any) => u));
     } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.patch("/api/users/:id", isAuthenticated, async (req: any, res) => {
+    if (req.user.role !== 'Admin') return res.status(403).json({ message: "Forbidden" });
+    try {
+      const { id } = req.params;
+      const prevUser = await storage.getUser(id);
+      const updatedUser = await storage.updateUser(id, req.body);
+      await logAudit(req, 'update', 'user', id, prevUser, req.body);
+      res.json(updatedUser);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.delete("/api/users/:id", isAuthenticated, async (req: any, res) => {
+    if (req.user.role !== 'Admin') return res.status(403).json({ message: "Forbidden" });
+    try {
+      const { id } = req.params;
+      const user = await storage.getUser(id);
+      await storage.deleteUser(id);
+      await logAudit(req, 'delete', 'user', id, user, null);
+      res.json({ message: "User deleted" });
+    } catch (error) {
+      res.status(400).json({ message: "Failed to delete user" });
     }
   });
 
@@ -92,75 +146,188 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const metrics = await storage.getDashboardMetrics();
       res.json(metrics);
     } catch (error) {
-      console.error("Error fetching dashboard metrics:", error);
-      res.status(500).json({ message: "Failed to fetch dashboard metrics" });
+      res.status(500).json({ message: "Failed to fetch metrics" });
     }
   });
 
-  // Supplier routes
-  app.get("/api/suppliers", isAuthenticated, async (req, res) => {
+  // Master Data routes
+  app.get("/api/master-data/suppliers", isAuthenticated, async (req, res) => {
     try {
       const suppliers = await storage.getSuppliers();
       res.json(suppliers);
     } catch (error) {
-      console.error("Error fetching suppliers:", error);
       res.status(500).json({ message: "Failed to fetch suppliers" });
     }
   });
 
-  app.post("/api/suppliers", isAuthenticated, async (req, res) => {
+  app.post("/api/master-data/suppliers", isAuthenticated, async (req: any, res) => {
+    if (!['Admin', 'Procurement'].includes(req.user.role)) return res.status(403).json({ message: "Forbidden" });
     try {
       const supplierData = insertSupplierSchema.parse(req.body);
       const supplier = await storage.createSupplier(supplierData);
+      await logAudit(req, 'create', 'supplier', supplier.id, null, supplierData);
       res.json(supplier);
     } catch (error) {
-      console.error("Error creating supplier:", error);
       res.status(400).json({ message: "Failed to create supplier" });
     }
   });
 
-  // Truck Delivery routes
+  app.patch("/api/master-data/suppliers/:id", isAuthenticated, async (req: any, res) => {
+    if (!['Admin', 'Procurement'].includes(req.user.role)) return res.status(403).json({ message: "Forbidden" });
+    try {
+      const { id } = req.params;
+      const prevSupplier = await storage.getSupplierById(id);
+      const supplier = await storage.updateSupplier(id, req.body);
+      await logAudit(req, 'update', 'supplier', id, prevSupplier, req.body);
+      res.json(supplier);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update supplier" });
+    }
+  });
+
+  app.get("/api/products", isAuthenticated, async (req, res) => {
+    try {
+      const p = await storage.getProducts();
+      res.json(p);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
+
+  app.post("/api/products", isAuthenticated, async (req: any, res) => {
+    if (!['Admin', 'Production Manager'].includes(req.user.role)) return res.status(403).json({ message: "Forbidden" });
+    try {
+      const pData = insertProductSchema.parse(req.body);
+      const product = await storage.createProduct(pData);
+      await logAudit(req, 'create', 'product', product.id, null, pData);
+      res.json(product);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create product" });
+    }
+  });
+
+  app.patch("/api/products/:id", isAuthenticated, async (req: any, res) => {
+    if (!['Admin', 'Production Manager'].includes(req.user.role)) return res.status(403).json({ message: "Forbidden" });
+    try {
+      const { id } = req.params;
+      const prev = await storage.getProductById(id);
+      const product = await storage.updateProduct(id, req.body);
+      await logAudit(req, 'update', 'product', id, prev, req.body);
+      res.json(product);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update product" });
+    }
+  });
+
+  app.get("/api/locations", isAuthenticated, async (req, res) => {
+    try {
+      const l = await storage.getStorageLocations();
+      res.json(l);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch locations" });
+    }
+  });
+
+  app.post("/api/locations", isAuthenticated, async (req: any, res) => {
+    if (!['Admin', 'Warehouse'].includes(req.user.role)) return res.status(403).json({ message: "Forbidden" });
+    try {
+      const lData = insertStorageLocationSchema.parse(req.body);
+      const location = await storage.createStorageLocation(lData);
+      await logAudit(req, 'create', 'location', location.id, null, lData);
+      res.json(location);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create location" });
+    }
+  });
+
+  app.patch("/api/locations/:id", isAuthenticated, async (req: any, res) => {
+    if (!['Admin', 'Warehouse'].includes(req.user.role)) return res.status(403).json({ message: "Forbidden" });
+    try {
+      const { id } = req.params;
+      const prev = await storage.getStorageLocationById(id);
+      const location = await storage.updateStorageLocation(id, req.body);
+      await logAudit(req, 'update', 'location', id, prev, req.body);
+      res.json(location);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update location" });
+    }
+  });
+
+  app.get("/api/master-data/customers", isAuthenticated, async (req, res) => {
+    try {
+      const c = await storage.getCustomers();
+      res.json(c);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch customers" });
+    }
+  });
+
+  app.post("/api/master-data/customers", isAuthenticated, async (req: any, res) => {
+    if (!['Admin', 'Dispatch'].includes(req.user.role)) return res.status(403).json({ message: "Forbidden" });
+    try {
+      const cData = insertCustomerSchema.parse(req.body);
+      const customer = await storage.createCustomer(cData);
+      await logAudit(req, 'create', 'customer', customer.id, null, cData);
+      res.json(customer);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create customer" });
+    }
+  });
+
+  app.patch("/api/master-data/customers/:id", isAuthenticated, async (req: any, res) => {
+    if (!['Admin', 'Dispatch'].includes(req.user.role)) return res.status(403).json({ message: "Forbidden" });
+    try {
+      const { id } = req.params;
+      const prev = await storage.getCustomerById(id);
+      const customer = await storage.updateCustomer(id, req.body);
+      await logAudit(req, 'update', 'customer', id, prev, req.body);
+      res.json(customer);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update customer" });
+    }
+  });
+
+  // Inbound routes
   app.get("/api/deliveries", isAuthenticated, async (req, res) => {
     try {
       const deliveries = await storage.getTruckDeliveries();
       res.json(deliveries);
     } catch (error) {
-      console.error("Error fetching deliveries:", error);
       res.status(500).json({ message: "Failed to fetch deliveries" });
     }
   });
 
-  app.post("/api/deliveries", isAuthenticated, async (req, res) => {
+  app.post("/api/deliveries", isAuthenticated, async (req: any, res) => {
     try {
       const deliveryData = insertTruckDeliverySchema.parse(req.body);
       const delivery = await storage.createTruckDelivery(deliveryData);
+      await logAudit(req, 'create', 'delivery', delivery.id, null, deliveryData);
       res.json(delivery);
     } catch (error) {
-      console.error("Error creating delivery:", error);
       res.status(400).json({ message: "Failed to create delivery" });
     }
   });
 
-  app.patch("/api/deliveries/:id/status", isAuthenticated, async (req, res) => {
+  app.patch("/api/deliveries/:id/status", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
       const { status } = req.body;
+      const prev = await storage.getTruckDeliveryById(id);
       await storage.updateTruckDeliveryStatus(id, status);
+      await logAudit(req, 'status_change', 'delivery', id, prev?.status, status);
       res.json({ message: "Delivery status updated" });
     } catch (error) {
-      console.error("Error updating delivery status:", error);
       res.status(400).json({ message: "Failed to update delivery status" });
     }
   });
 
-  // Weighbridge routes
-  app.post("/api/weighbridge", isAuthenticated, async (req, res) => {
+  app.post("/api/weighbridge", isAuthenticated, async (req: any, res) => {
     try {
       const readingData = insertWeighbridgeReadingSchema.parse(req.body);
       const reading = await storage.createWeighbridgeReading(readingData);
+      await logAudit(req, 'create', 'weighbridge_reading', reading.id, null, readingData);
       res.json(reading);
     } catch (error) {
-      console.error("Error creating weighbridge reading:", error);
       res.status(400).json({ message: "Failed to create weighbridge reading" });
     }
   });
@@ -171,31 +338,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const batches = await storage.getRawMaterialBatches();
       res.json(batches);
     } catch (error) {
-      console.error("Error fetching raw material batches:", error);
-      res.status(500).json({ message: "Failed to fetch raw material batches" });
+      res.status(500).json({ message: "Failed to fetch batches" });
     }
   });
 
-  app.post("/api/raw-material-batches", isAuthenticated, async (req, res) => {
+  app.post("/api/raw-material-batches", isAuthenticated, async (req: any, res) => {
     try {
       const batchData = insertRawMaterialBatchSchema.parse(req.body);
       const batch = await storage.createRawMaterialBatch(batchData);
+      await logAudit(req, 'create', 'batch', batch.id, null, batchData);
       res.json(batch);
     } catch (error) {
-      console.error("Error creating raw material batch:", error);
-      res.status(400).json({ message: "Failed to create raw material batch" });
+      res.status(400).json({ message: "Failed to create batch" });
     }
   });
 
-  app.patch("/api/raw-material-batches/:id/quality-status", isAuthenticated, async (req, res) => {
+  app.patch("/api/raw-material-batches/:id/quality-status", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
       const { status } = req.body;
+      const prev = await storage.getRawMaterialBatchById(id);
       await storage.updateBatchQualityStatus(id, status);
-      res.json({ message: "Batch quality status updated" });
+      await logAudit(req, 'status_change', 'batch', id, prev?.status, status);
+      if (status === 'rejected') {
+        await raiseException(req, 'qc_failure', 'batch', id, `Batch ${prev?.batchNumber} rejected during quality approval.`, 'high');
+      }
+      res.json({ message: "Batch status updated" });
     } catch (error) {
-      console.error("Error updating batch quality status:", error);
-      res.status(400).json({ message: "Failed to update batch quality status" });
+      res.status(400).json({ message: "Failed to update batch status" });
     }
   });
 
@@ -205,204 +375,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const checks = await storage.getQualityChecks();
       res.json(checks);
     } catch (error) {
-      console.error("Error fetching quality checks:", error);
-      res.status(500).json({ message: "Failed to fetch quality checks" });
+      res.status(500).json({ message: "Failed to fetch checks" });
     }
   });
 
   app.post("/api/quality-checks", isAuthenticated, async (req: any, res) => {
     try {
-      const checkData = {
-        ...insertQualityCheckSchema.parse(req.body),
-        checkedBy: req.user.id,
-      };
+      const checkData = { ...insertQualityCheckSchema.parse(req.body), checkedBy: req.user.id };
       const check = await storage.createQualityCheck(checkData);
+      await logAudit(req, 'create', 'quality_check', check.id, null, checkData);
+
+      if (check.status === 'rejected') {
+        const entityType = check.batchId ? 'raw_batch' : (check.finishedBatchId ? 'finished_batch' : 'production_order');
+        const entityId = (check.batchId || check.finishedBatchId || check.productionOrderId) as string;
+        await raiseException(req, 'qc_failure', entityType, entityId, `Quality Check ${check.checkNumber} rejected.`);
+      }
       res.json(check);
     } catch (error) {
-      console.error("Error creating quality check:", error);
       res.status(400).json({ message: "Failed to create quality check" });
     }
   });
 
   // Production Order routes
-  app.get("/api/production-orders", isAuthenticated, async (req, res) => {
+  app.get("/api/production/orders", isAuthenticated, async (req, res) => {
     try {
       const orders = await storage.getProductionOrders();
       res.json(orders);
     } catch (error) {
-      console.error("Error fetching production orders:", error);
-      res.status(500).json({ message: "Failed to fetch production orders" });
+      res.status(500).json({ message: "Failed to fetch orders" });
     }
   });
 
-  app.post("/api/production-orders", isAuthenticated, async (req: any, res) => {
+  app.post("/api/production/orders", isAuthenticated, async (req: any, res) => {
+    if (!['Admin', 'Production Manager'].includes(req.user.role)) return res.status(403).json({ message: "Forbidden" });
     try {
-      const orderData = {
-        ...insertProductionOrderSchema.parse(req.body),
-        createdBy: req.user.id,
-      };
+      const orderData = { ...insertProductionOrderSchema.parse(req.body), createdBy: req.user.id };
       const order = await storage.createProductionOrder(orderData);
+      await logAudit(req, 'create', 'production_order', order.id, null, orderData);
       res.json(order);
     } catch (error) {
-      console.error("Error creating production order:", error);
-      res.status(400).json({ message: "Failed to create production order" });
+      res.status(400).json({ message: "Failed to create order" });
     }
   });
 
-  app.patch("/api/production-orders/:id/status", isAuthenticated, async (req, res) => {
+  app.patch("/api/production/orders/:id/status", isAuthenticated, async (req: any, res) => {
+    if (!['Admin', 'Production Manager', 'Production Operator'].includes(req.user.role)) return res.status(403).json({ message: "Forbidden" });
     try {
       const { id } = req.params;
       const { status } = req.body;
+      const prev = await storage.getProductionOrderById(id);
       await storage.updateProductionOrderStatus(id, status);
-      res.json({ message: "Production order status updated" });
+      await logAudit(req, 'status_change', 'production_order', id, prev?.status, status);
+      res.json({ message: "Order status updated" });
     } catch (error) {
-      console.error("Error updating production order status:", error);
-      res.status(400).json({ message: "Failed to update production order status" });
+      res.status(400).json({ message: "Failed to update order status" });
     }
   });
 
-  app.patch("/api/production-orders/:id/progress", isAuthenticated, async (req, res) => {
+  app.post("/api/production/issue-materials", isAuthenticated, async (req: any, res) => {
+    if (!['Admin', 'Production Operator'].includes(req.user.role)) return res.status(403).json({ message: "Forbidden" });
     try {
-      const { id } = req.params;
-      const { completedQuantity } = req.body;
-      await storage.updateProductionOrderProgress(id, completedQuantity);
-      res.json({ message: "Production order progress updated" });
+      const issueData = { ...req.body, issuedBy: req.user.id };
+      await storage.issueMaterials(issueData);
+      await logAudit(req, 'material_issue', 'production_order', req.body.productionOrderId, null, issueData);
+      res.json({ message: "Materials issued successfully" });
     } catch (error) {
-      console.error("Error updating production order progress:", error);
-      res.status(400).json({ message: "Failed to update production order progress" });
+      res.status(400).json({ message: "Failed to issue materials" });
     }
   });
 
-  // Finished Product Batch routes
-  app.get("/api/finished-product-batches", isAuthenticated, async (req, res) => {
+  app.post("/api/production/record-output", isAuthenticated, async (req: any, res) => {
+    if (!['Admin', 'Production Operator'].includes(req.user.role)) return res.status(403).json({ message: "Forbidden" });
     try {
-      const batches = await storage.getFinishedProductBatches();
-      res.json(batches);
+      const outputData = { ...req.body, userId: req.user.id };
+      await storage.recordProductionOutput(outputData);
+      await logAudit(req, 'record_output', 'production_order', req.body.productionOrderId, null, outputData);
+      res.json({ message: "Production output recorded successfully" });
     } catch (error) {
-      console.error("Error fetching finished product batches:", error);
-      res.status(500).json({ message: "Failed to fetch finished product batches" });
+      res.status(400).json({ message: "Failed to record output" });
     }
   });
 
-  app.post("/api/finished-product-batches", isAuthenticated, async (req, res) => {
+  // Inventory / Stock routes
+  app.get("/api/inventory/balances", isAuthenticated, async (req, res) => {
     try {
-      const batchData = insertFinishedProductBatchSchema.parse(req.body);
-      const batch = await storage.createFinishedProductBatch(batchData);
-      res.json(batch);
+      const balances = await storage.getInventoryBalances();
+      res.json(balances);
     } catch (error) {
-      console.error("Error creating finished product batch:", error);
-      res.status(400).json({ message: "Failed to create finished product batch" });
+      res.status(500).json({ message: "Failed to fetch balances" });
     }
   });
 
-  // Warehouse Stock routes
-  app.get("/api/warehouse/stock", isAuthenticated, async (req, res) => {
+  app.get("/api/stock-movements", isAuthenticated, async (req, res) => {
     try {
-      const stock = await storage.getWarehouseStock();
-      res.json(stock);
+      const movements = await storage.getStockMovements();
+      res.json(movements);
     } catch (error) {
-      console.error("Error fetching warehouse stock:", error);
-      res.status(500).json({ message: "Failed to fetch warehouse stock" });
+      res.status(500).json({ message: "Failed to fetch stock movements" });
     }
   });
 
-  // Dispatch Order routes
-  app.get("/api/dispatch-orders", isAuthenticated, async (req, res) => {
+  // Governance routes
+  app.get("/api/audit-logs", isAuthenticated, async (req: any, res) => {
+    if (!['Admin', 'Plant Manager'].includes(req.user.role)) return res.status(403).json({ message: "Forbidden" });
     try {
-      const orders = await storage.getDispatchOrders();
-      res.json(orders);
+      const logs = await storage.getAuditLogs();
+      res.json(logs);
     } catch (error) {
-      console.error("Error fetching dispatch orders:", error);
-      res.status(500).json({ message: "Failed to fetch dispatch orders" });
+      res.status(500).json({ message: "Failed to fetch audit logs" });
     }
   });
 
-  app.post("/api/dispatch-orders", isAuthenticated, async (req: any, res) => {
+  app.get("/api/exceptions", isAuthenticated, async (req, res) => {
     try {
-      const orderData = {
-        ...insertDispatchOrderSchema.parse(req.body),
-        createdBy: req.user.id,
-      };
-      const order = await storage.createDispatchOrder(orderData);
-      res.json(order);
+      const exceptions = await storage.getExceptionLogs();
+      res.json(exceptions);
     } catch (error) {
-      console.error("Error creating dispatch order:", error);
-      res.status(400).json({ message: "Failed to create dispatch order" });
+      res.status(500).json({ message: "Failed to fetch exceptions" });
     }
   });
 
-  app.patch("/api/dispatch-orders/:id/status", isAuthenticated, async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { status } = req.body;
-      await storage.updateDispatchOrderStatus(id, status);
-      res.json({ message: "Dispatch order status updated" });
-    } catch (error) {
-      console.error("Error updating dispatch order status:", error);
-      res.status(400).json({ message: "Failed to update dispatch order status" });
-    }
-  });
-
-  // Weighbridge Reading routes
-  app.get("/api/weighbridge-readings", isAuthenticated, async (req, res) => {
-    try {
-      const readings = await storage.getWeighbridgeReadings();
-      res.json(readings);
-    } catch (error) {
-      console.error("Error fetching weighbridge readings:", error);
-      res.status(500).json({ message: "Failed to fetch weighbridge readings" });
-    }
-  });
-
-  app.post("/api/weighbridge-readings", isAuthenticated, async (req, res) => {
-    try {
-      const readingData = insertWeighbridgeReadingSchema.parse(req.body);
-      const reading = await storage.createWeighbridgeReading(readingData);
-      
-      // Update delivery status to approved after weighbridge
-      if (readingData.deliveryId && typeof readingData.deliveryId === 'string') {
-        await storage.updateDeliveryStatus(readingData.deliveryId, "approved");
-      }
-      
-      res.json(reading);
-    } catch (error) {
-      console.error("Error creating weighbridge reading:", error);
-      res.status(400).json({ message: "Failed to create weighbridge reading" });
-    }
-  });
-
-  app.get("/api/weighbridge-readings/:id", isAuthenticated, async (req, res) => {
-    try {
-      const { id } = req.params;
-      const reading = await storage.getWeighbridgeReading(id);
-      if (!reading) {
-        return res.status(404).json({ message: "Weighbridge reading not found" });
-      }
-      res.json(reading);
-    } catch (error) {
-      console.error("Error fetching weighbridge reading:", error);
-      res.status(500).json({ message: "Failed to fetch weighbridge reading" });
-    }
-  });
-
-  app.get("/api/deliveries/pending-weighbridge", isAuthenticated, async (req, res) => {
-    try {
-      const deliveries = await storage.getPendingWeighbridgeDeliveries();
-      res.json(deliveries);
-    } catch (error) {
-      console.error("Error fetching pending weighbridge deliveries:", error);
-      res.status(500).json({ message: "Failed to fetch pending deliveries" });
-    }
-  });
-
-  // Demo data seeding endpoint
+  // Demo data seeding
   app.post('/api/seed-demo-data', isAuthenticated, async (req, res) => {
     try {
       await seedDemoData();
       res.json({ message: "Demo data created successfully" });
     } catch (error) {
-      console.error("Error seeding demo data:", error);
-      res.status(500).json({ message: "Failed to create demo data", error: error });
+      res.status(500).json({ message: "Failed to seed demo data" });
     }
   });
 
