@@ -3,8 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import Sidebar from "@/components/layout/sidebar";
-import TopNavigation from "@/components/layout/top-navigation";
+import { cn } from "@/lib/utils";
 import MetricsCards from "@/components/dashboard/metrics-cards";
 import WorkflowStatus from "@/components/dashboard/workflow-status";
 import RecentDeliveries from "@/components/dashboard/recent-deliveries";
@@ -43,7 +42,7 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0b14]">
+      <div className="min-h-screen bg-slate-900 text-slate-200 p-8">
         <div className="flex flex-col items-center gap-4">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-indigo-500/30 border-t-indigo-500"></div>
           <div className="text-slate-500 font-bold tracking-widest uppercase text-xs">Initializing Core...</div>

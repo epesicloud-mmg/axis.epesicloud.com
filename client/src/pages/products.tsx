@@ -39,7 +39,6 @@ import {
     DropdownMenuTrigger,
     DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import TopNavigation from "@/components/layout/top-navigation";
 import { cn } from "@/lib/utils";
 
 interface Product {
@@ -89,8 +88,7 @@ export default function Products() {
     const finishedProducts = products.filter(p => p.productType === "finished_product");
 
     return (
-        <div className="min-h-screen bg-slate-900 text-slate-200 p-8 pt-6">
-            <TopNavigation />
+        <div className="min-h-screen bg-slate-900 text-slate-200 p-8">
 
             <div className="max-w-7xl mx-auto space-y-8">
                 <div className="flex justify-between items-center">

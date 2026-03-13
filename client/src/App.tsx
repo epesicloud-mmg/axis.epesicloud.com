@@ -26,6 +26,7 @@ import ProductionWorkOrders from "@/pages/production-work-orders";
 import ReceivingIntake from "@/pages/receiving-intake";
 import StockMovements from "@/pages/stock-movements";
 import Sidebar from "@/components/layout/sidebar";
+import TopNavigation from "@/components/layout/top-navigation";
 
 // Generic Protected Route component
 function ProtectedRoute({ component: Component, roles, ...rest }: any) {
@@ -38,8 +39,11 @@ function ProtectedRoute({ component: Component, roles, ...rest }: any) {
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
-        <Component {...rest} />
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <TopNavigation />
+        <div className="flex-1 overflow-y-auto">
+          <Component {...rest} />
+        </div>
       </main>
     </div>
   );

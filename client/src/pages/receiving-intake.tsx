@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { Plus, Layers, Package, CheckCircle, Clock } from "lucide-react";
 
 export default function ReceivingIntake() {
     const { toast } = useToast();
@@ -77,7 +76,7 @@ export default function ReceivingIntake() {
     }[status] || "bg-slate-500/10 text-slate-600 border-slate-500/20");
 
     return (
-        <div className="min-h-screen bg-slate-50/50 p-8">
+        <div className="p-8">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>

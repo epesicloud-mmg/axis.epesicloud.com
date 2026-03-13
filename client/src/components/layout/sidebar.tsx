@@ -124,25 +124,25 @@ export default function Sidebar() {
       <div className="flex-1 overflow-y-auto px-4 py-8">
         <nav className="space-y-1.5">
           {navItems.map((item) => (
-            <Link key={item.name} href={item.href}>
-              <a
+            <Link
+              key={item.name}
+              href={item.href}
+              className={cn(
+                isActive(item.href)
+                  ? "bg-slate-800 text-white"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/50",
+                "group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200"
+              )}
+            >
+              <item.icon
                 className={cn(
                   isActive(item.href)
-                    ? "bg-slate-800 text-white"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800/50",
-                  "group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200"
+                    ? "text-primary-500"
+                    : "text-slate-500 group-hover:text-slate-300",
+                  "mr-3 h-5 w-5 flex-shrink-0 transition-colors"
                 )}
-              >
-                <item.icon
-                  className={cn(
-                    isActive(item.href)
-                      ? "text-primary-500"
-                      : "text-slate-500 group-hover:text-slate-300",
-                    "mr-3 h-5 w-5 flex-shrink-0 transition-colors"
-                  )}
-                />
-                {item.name}
-              </a>
+              />
+              {item.name}
             </Link>
           ))}
         </nav>

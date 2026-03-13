@@ -58,7 +58,7 @@ export default function StockMovements() {
     ];
 
     return (
-        <div className="min-h-screen bg-slate-50/50 p-8">
+        <div className="p-8">
             <div className="mb-8">
                 <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Stock Movements</h1>
                 <p className="text-slate-500 mt-1">Complete audit trail of all inventory movements across the facility.</p>

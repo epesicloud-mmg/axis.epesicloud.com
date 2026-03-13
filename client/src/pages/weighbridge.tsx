@@ -7,7 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import Sidebar from "@/components/layout/sidebar";
-import TopNavigation from "@/components/layout/top-navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -144,10 +143,9 @@ export default function Weighbridge() {
   }
 
   return (
-    <div className="bg-gray-50 font-sans">
-      <TopNavigation />
+    <div className="bg-slate-50 min-h-screen p-6">
 
-      <div className="flex h-screen pt-16">
+      <div className="flex h-screen">
         <Sidebar />
 
         <main className="flex-1 overflow-y-auto bg-gray-50">

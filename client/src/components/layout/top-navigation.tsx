@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -58,11 +58,11 @@ export default function TopNavigation() {
   };
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200 fixed w-full top-0 z-50">
+    <nav className="bg-white shadow-sm border-b border-gray-200">
       <div className="px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <button 
+            <button
               className="lg:hidden text-gray-600 hover:text-gray-900"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
@@ -75,7 +75,7 @@ export default function TopNavigation() {
               <h1 className="text-xl font-medium text-gray-900">Maize Production System</h1>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-4">
             {/* Notifications */}
             <button className="p-2 text-gray-600 hover:text-gray-900 relative">
@@ -84,16 +84,16 @@ export default function TopNavigation() {
                 3
               </Badge>
             </button>
-            
+
             {/* User Menu */}
             <div className="flex items-center space-x-3 border-l border-gray-200 pl-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center space-x-3 hover:bg-gray-50">
                     {user?.profileImageUrl ? (
-                      <img 
-                        src={user.profileImageUrl} 
-                        alt="User avatar" 
+                      <img
+                        src={user.profileImageUrl}
+                        alt="User avatar"
                         className="w-8 h-8 rounded-full object-cover"
                       />
                     ) : (

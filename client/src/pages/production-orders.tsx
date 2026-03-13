@@ -5,7 +5,6 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import Sidebar from "@/components/layout/sidebar";
-import TopNavigation from "@/components/layout/top-navigation";
 import ProductionOrderForm from "@/components/forms/production-order-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, ServerCog, Calendar, Target, Box, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ProductionOrder } from "@shared/schema";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function ProductionOrders() {
   const { toast } = useToast();
@@ -86,171 +85,128 @@ export default function ProductionOrders() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50/50">
-      <div className="p-8">
-        {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Production Intelligence</h1>
-            <p className="text-slate-500 mt-1">Monitor manufacturing throughput, yield efficiency, and order lifecycles.</p>
-          </div>
-          <Dialog open={showForm} onOpenChange={setShowForm}>
-            <DialogTrigger asChild>
-              <Button className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-6 h-12 shadow-lg shadow-slate-900/10 transition-all font-bold">
-                <Plus className="w-4 h-4 mr-2" />
-                Initialize Work Order
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl rounded-3xl border-none shadow-2xl p-0 overflow-hidden">
-              <div className="bg-slate-900 p-6 text-white">
-                <DialogHeader>
-                  <DialogTitle className="text-xl font-bold text-white">New Production Configuration</DialogTitle>
-                  <p className="text-slate-400 text-sm">Define product parameters and target outputs.</p>
-                </DialogHeader>
-              </div>
-              <div className="p-6">
-                <ProductionOrderForm
-                  onSuccess={() => {
-                    setShowForm(false);
-                    queryClient.invalidateQueries({ queryKey: ["/api/production-orders"] });
-                  }}
-                />
-              </div>
-            </DialogContent>
-          </Dialog>
+    <div className="p-8">
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Production Intelligence</h1>
+          <p className="text-slate-500 mt-1">Monitor manufacturing throughput, yield efficiency, and order lifecycles.</p>
         </div>
-
-        {/* Dashboard Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          {[
-            { label: "Active Orders", value: productionOrders.filter(o => o.status === 'in_progress').length, icon: ServerCog, color: "text-blue-500", bg: "bg-blue-500/10" },
-            { label: "Pending QC", value: productionOrders.filter(o => o.status === 'quality_check').length, icon: Target, color: "text-indigo-500", bg: "bg-indigo-500/10" },
-            { label: "Completed Today", value: productionOrders.filter(o => o.status === 'completed').length, icon: Box, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-            { label: "Average Yield", value: "98.2%", icon: Zap, color: "text-amber-500", bg: "bg-amber-500/10" },
-          ].map((stat) => (
-            <Card key={stat.label} className="border-none shadow-sm bg-white rounded-3xl">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
-                    <p className="text-2xl font-black text-slate-900 mt-1">{stat.value}</p>
-                  </div>
-                  <div className={cn("p-3 rounded-2xl", stat.bg)}>
-                    <stat.icon className={cn("w-5 h-5", stat.color)} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Orders Listing */}
-        {ordersLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
-            <p className="text-slate-400 font-medium">Fetching active floor data...</p>
-          </div>
-        ) : productionOrders.length === 0 ? (
-          <Card className="border-none shadow-sm bg-white rounded-[40px] p-12 text-center">
-            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <ServerCog className="w-10 h-10 text-slate-300" />
-            </div>
-            <h3 className="text-xl font-bold text-slate-900">No Active Production</h3>
-            <p className="text-slate-500 max-w-xs mx-auto mt-2 mb-8">Ready to start the line? Configure your first work order to begin tracking.</p>
-            <Button onClick={() => setShowForm(true)} className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-8 h-12 font-bold">
+        <Dialog open={showForm} onOpenChange={setShowForm}>
+          <DialogTrigger asChild>
+            <Button className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-6 h-12 shadow-lg shadow-slate-900/10 transition-all font-bold">
               <Plus className="w-4 h-4 mr-2" />
-              Configure Line
+              Initialize Work Order
             </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl rounded-3xl border-none shadow-2xl p-0 overflow-hidden">
+            <div className="bg-slate-900 p-6 text-white">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold text-white">New Production Configuration</DialogTitle>
+                <p className="text-slate-400 text-sm">Define product parameters and target outputs.</p>
+              </DialogHeader>
+            </div>
+            <div className="p-6">
+              <ProductionOrderForm
+                onSuccess={() => {
+                  setShowForm(false);
+                  queryClient.invalidateQueries({ queryKey: ["/api/production-orders"] });
+                }}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {[
+          { label: "Active Loads", value: productionOrders.filter(o => o.status === 'in_progress').length, icon: Zap, color: "text-blue-500", bg: "bg-blue-500/10" },
+          { label: "Daily Yield", value: "98.2%", icon: Target, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+          { label: "Scheduled", value: productionOrders.filter(o => o.status === 'scheduled').length, icon: Calendar, color: "text-amber-500", bg: "bg-amber-500/10" },
+        ].map((stat, i) => (
+          <Card key={i} className="border-none shadow-sm bg-white rounded-3xl overflow-hidden group hover:shadow-md transition-all">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
+                  <p className="text-2xl font-black text-slate-900 mt-1">{stat.value}</p>
+                </div>
+                <div className={cn("p-4 rounded-2xl transition-transform group-hover:scale-110", stat.bg)}>
+                  <stat.icon className={cn("w-6 h-6", stat.color)} />
+                </div>
+              </div>
+            </CardContent>
           </Card>
-        ) : (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {productionOrders.map((order: any) => {
-              const progress = (order.completedQuantity / order.targetQuantity) * 100;
-              return (
-                <Card key={order.id} className="border-none shadow-sm bg-white rounded-3xl overflow-hidden group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300">
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-6">
+        ))}
+      </div>
+
+      <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-slate-50/50">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="font-bold text-slate-900 py-4 h-14">Order Reference</TableHead>
+                <TableHead className="font-bold text-slate-900">Output Target</TableHead>
+                <TableHead className="font-bold text-slate-900">Current Yield</TableHead>
+                <TableHead className="font-bold text-slate-900">Lifecycle State</TableHead>
+                <TableHead className="text-right font-bold text-slate-900 pr-8">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {ordersLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="animate-pulse">
+                    <TableCell colSpan={5} className="h-20 bg-slate-50/50"></TableCell>
+                  </TableRow>
+                ))
+              ) : productionOrders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-64 text-center">
+                    <div className="flex flex-col items-center gap-3 opacity-20">
+                      <ServerCog className="w-16 h-16" />
+                      <p className="font-bold">No active manufacturing cycles</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                productionOrders.map((order) => (
+                  <TableRow key={order.id} className="hover:bg-slate-50/30 transition-colors">
+                    <TableCell className="py-5">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 bg-slate-900 rounded-2xl flex items-center justify-center text-white font-black text-xs">
-                          {order.orderNumber.slice(-2)}
+                        <div className="p-2.5 bg-slate-100 rounded-xl">
+                          <Box className="w-5 h-5 text-slate-600" />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-900">{order.orderNumber}</p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{order.productType.replace('_', ' ')}</p>
+                          <p className="font-bold text-slate-900 leading-none">{order.orderNumber}</p>
+                          <p className="text-xs text-slate-400 mt-1.5 font-medium">Started {new Date(order.createdAt).toLocaleDateString()}</p>
                         </div>
                       </div>
-                      <Badge className={cn("px-3 py-1 rounded-full font-bold text-[10px] border shadow-sm", getStatusColor(order.status))}>
-                        {order.status.replace('_', ' ').toUpperCase()}
+                    </TableCell>
+                    <TableCell className="font-bold text-slate-700">{order.targetQuantity} KG</TableCell>
+                    <TableCell>
+                      <div className="w-full max-w-[140px] space-y-2">
+                        <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase">
+                          <span>Progress</span>
+                          <span>{Math.round((order.actualQuantityProduced / order.targetQuantity) * 100)}%</span>
+                        </div>
+                        <Progress value={(order.actualQuantityProduced / order.targetQuantity) * 100} className="h-1.5 bg-slate-100" />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={cn("rounded-lg border-none px-3 py-1 font-bold text-[10px] tracking-wider uppercase", getStatusColor(order.status))}>
+                        {order.status.replace('_', ' ')}
                       </Badge>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4 mb-6">
-                      <div className="p-4 bg-slate-50 rounded-2xl">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase">Target</p>
-                        <p className="text-lg font-black text-slate-900 mt-1">{order.targetQuantity.toLocaleString()}<span className="text-xs font-medium text-slate-400 ml-1">UNITS</span></p>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-2xl border border-transparent group-hover:border-slate-200 transition-colors">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase">Actual</p>
-                        <p className="text-lg font-black text-slate-900 mt-1">{order.completedQuantity.toLocaleString()}<span className="text-xs font-medium text-slate-400 ml-1">UNITS</span></p>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-2xl">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase">Yield</p>
-                        <p className="text-lg font-black text-emerald-600 mt-1">{order.yieldPercentage || '0'}%</p>
-                      </div>
-                    </div>
-
-                    {order.status === "in_progress" && (
-                      <div className="space-y-2 mb-6">
-                        <div className="flex justify-between items-end">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Throughput Progress</p>
-                          <p className="text-sm font-black text-slate-900">{progress.toFixed(1)}%</p>
-                        </div>
-                        <Progress value={progress} className="h-2 rounded-full bg-slate-100" />
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                      <div className="flex items-center gap-2 text-slate-400">
-                        <Calendar className="w-3 h-3" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">{new Date(order.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        {order.status === "scheduled" && (
-                          <Button
-                            size="sm"
-                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-0 h-9 font-bold text-xs"
-                            onClick={() => updateStatusMutation.mutate({ id: order.id, status: "in_progress" })}
-                          >
-                            Init Machine
-                          </Button>
-                        )}
-                        {order.status === "in_progress" && (
-                          <Button
-                            size="sm"
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-4 py-0 h-9 font-bold text-xs"
-                            onClick={() => updateStatusMutation.mutate({ id: order.id, status: "quality_check" })}
-                          >
-                            Dispatch to QC
-                          </Button>
-                        )}
-                        {order.status === "quality_check" && (
-                          <Button
-                            size="sm"
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-4 py-0 h-9 font-bold text-xs"
-                            onClick={() => updateStatusMutation.mutate({ id: order.id, status: "completed" })}
-                          >
-                            Release Logic
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                    </TableCell>
+                    <TableCell className="text-right pr-8">
+                      <Button variant="ghost" className="rounded-xl font-bold text-slate-600 hover:bg-slate-100">Synchronize</Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
     </div>
   );
 }
